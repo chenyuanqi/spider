@@ -38,7 +38,7 @@ ws.append(["Title", "Summary", "Link", "Source"])
 
 # 爬取前5页
 for page in range(1, 6):
-    articles = driver.find_elements(By.XPATH, "//div[@class='txt-box']")
+    articles = driver.find_elements(By.XPATH, "//div[@class='news-box']")
     
     for article in articles:
         title = article.find_element(By.XPATH, "./h3/a").text
@@ -51,7 +51,7 @@ for page in range(1, 6):
     # 翻页
     if page < 5:
         try:
-            next_page = driver.find_element(By.XPATH, "//a[contains(text(), '下一页')]")
+            next_page = driver.find_element(By.XPATH, "//a[@id='sogou_next']")
             next_page.click()
             time.sleep(5)  # 等待页面加载
         except NoSuchElementException:
