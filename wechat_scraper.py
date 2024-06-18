@@ -6,6 +6,8 @@ from selenium.webdriver.chrome.service import Service
 import pandas as pd
 from datetime import datetime
 
+# Run: python3 wechat_scraper.py
+
 # 设置 WebDriver 路径
 # 如果没有安装，brew install --cask chromedriver
 webdriver_path = '/usr/local/bin/chromedriver'  # 替换为你的 WebDriver 路径
@@ -29,7 +31,7 @@ for _ in range(5):
         title = article.find_element(By.XPATH, './/h3/a').text
         summary = article.find_element(By.XPATH, './/p[@class="txt-info"]').text
         link = article.find_element(By.XPATH, './/h3/a').get_attribute('href')
-        source = article.find_element(By.XPATH, './/div[@class="s-p"]/a').text
+        source = article.find_element(By.XPATH, './/div[@class="s-p"]/span').text
         results.append([title, summary, link, source])
     
     # 翻页
