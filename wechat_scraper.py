@@ -64,3 +64,5 @@ df.to_excel(filename, index=False)
 
 # 关闭浏览器
 driver.quit()
+
+print(f'爬取完成，结果保存在 {filename}')
