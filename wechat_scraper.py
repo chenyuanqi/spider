@@ -1,3 +1,4 @@
+import argparse
 import time
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
@@ -12,20 +13,37 @@ from datetime import datetime
 # 如果没有安装，brew install --cask chromedriver
 webdriver_path = '/usr/local/bin/chromedriver'  # 替换为你的 WebDriver 路径
 
+keyword = input("请输入搜索的关键词：")
+page = int(input("请输入搜索的总页数："))
+if keyword == '' or page <= 0:
+    print('关键词不能为空，页数必须大于0')
+    exit()
+
 # 初始化浏览器
 service = Service(webdriver_path)
 driver = webdriver.Chrome(service=service)
 driver.get('https://weixin.sogou.com/')
 
+# # 创建一个解析器对象
+# parser = argparse.ArgumentParser(description='微信文章爬虫')
+# # 添加命令行参数
+# parser.add_argument('keyword', type=str, help='关键词')
+# parser.add_argument('page', type=int, help='爬取页码数')
+# # 解析参数
+# args = parser.parse_args()
+# keyword = args.keyword
+# page = args.page
+
 # 输入关键字并搜索
 search_box = driver.find_element(By.NAME, 'query')
-search_box.send_keys('AI')
+# 搜索关键词由用户输入
+search_box.send_keys(keyword)
 search_box.send_keys(Keys.RETURN)
 time.sleep(2)  # 等待页面加载
 
 # 爬取内容
 results = []
-for _ in range(5):
+for _ in range(page):
     articles = driver.find_elements(By.XPATH, '//ul[@class="news-list"]/li')
     for article in articles:
         title = article.find_element(By.XPATH, './/h3/a').text
