@@ -10,13 +10,16 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 import time
-
+import logging
 
 class ImageDownloader:
     def __init__(self, url):
         self.url = url
         self.session = requests.Session()
         self.soup = None
+
+        # Configure cssutils logging
+        cssutils.log.setLevel(logging.CRITICAL)
 
     def fetch(self):
         headers = {
@@ -27,9 +30,13 @@ class ImageDownloader:
         self.soup = BeautifulSoup(response.text, 'html.parser')
 
     def save_image(self, img_url, save_folder):
+        if img_url.startswith('data:image'):  # Handle data URLs separately
+            self.save_data_uri_image(img_url, save_folder)
+            return
+
         try:
             img_response = self.session.get(img_url)
-            img_response.raise_for_status()  # 确保响应状态码为200
+            img_response.raise_for_status()  # Ensure the response status code is 200
             img_name = os.path.basename(img_url)
             with open(os.path.join(save_folder, img_name), 'wb') as f:
                 f.write(img_response.content)
@@ -37,6 +44,27 @@ class ImageDownloader:
             print(f"HTTP error occurred while downloading {img_url}: {e}")
         except requests.exceptions.RequestException as e:
             print(f"Error downloading {img_url}: {e}")
+
+    def save_data_uri_image(self, data_uri, save_folder):
+        try:
+            header, encoded = data_uri.split(",", 1)
+            # Fix base64 string length
+            encoded = self.fix_base64_padding(encoded)
+            data = base64.b64decode(encoded)
+            mime_type = header.split(";")[0].split(":")[1]
+            extension = mime_type.split("/")[1]
+            img_name = f"image.{extension}"
+            with open(os.path.join(save_folder, img_name), 'wb') as f:
+                f.write(data)
+        except Exception as e:
+            print(f"Error saving data URI image: {e}")
+
+    def fix_base64_padding(self, encoded):
+        # Fix base64 string length
+        missing_padding = len(encoded) % 4
+        if missing_padding:
+            encoded += '=' * (4 - missing_padding)
+        return encoded
 
     def download_img_tags(self, save_folder='downloaded_images'):
         if not os.path.exists(save_folder):
@@ -96,12 +124,8 @@ class ImageDownloader:
 
         for img_tag in self.soup.find_all('img'):
             img_url = img_tag.get('src')
-            if img_url and img_url.startswith('data:image'):  # 添加检查img_url是否为None
-                image_data = img_url.split(',', 1)[1]
-                image_format = img_url.split(';')[0].split('/')[1]
-                file_path = os.path.join(save_folder, f"image.{image_format}")
-                with open(file_path, "wb") as fh:
-                    fh.write(base64.b64decode(image_data))
+            if img_url and img_url.startswith('data:image'):
+                self.save_data_uri_image(img_url, save_folder)
 
     def download_canvas_images(self, save_folder='downloaded_images'):
         if not os.path.exists(save_folder):
@@ -110,19 +134,19 @@ class ImageDownloader:
         # Setup WebDriver
         service = Service(ChromeDriverManager().install())
         options = webdriver.ChromeOptions()
-        options.headless = True  # 使用无头模式
+        options.headless = True  # Use headless mode
         driver = webdriver.Chrome(service=service, options=options)
 
         try:
             driver.get(self.url)
-            time.sleep(5)  # 等待JavaScript渲染完成
+            time.sleep(5)  # Wait for JavaScript to render
 
-            # 找到所有canvas元素
+            # Find all canvas elements
             canvases = driver.find_elements(By.TAG_NAME, "canvas")
             for index, canvas in enumerate(canvases):
-                # 获取Canvas的base64编码图片数据
+                # Get base64 encoded image data from Canvas
                 canvas_base64 = driver.execute_script("return arguments[0].toDataURL('image/png').substring(21);", canvas)
-                canvas_png = base64.b64decode(canvas_base64)
+                canvas_png = base64.b64decode(self.fix_base64_padding(canvas_base64))
                 canvas_file_path = os.path.join(save_folder, f'canvas_image_{index}.png')
                 with open(canvas_file_path, 'wb') as f:
                     f.write(canvas_png)
@@ -132,7 +156,7 @@ class ImageDownloader:
 
 # Example usage
 if __name__ == "__main__":
-    downloader = ImageDownloader("http://www.58pic.com/")
+    downloader = ImageDownloader("https://unsplash.com/")
     downloader.fetch()
     downloader.download_img_tags()
     downloader.download_data_uri_images()
